@@ -22,12 +22,14 @@ def process_image(
     height=None,
     mode=None,
     quality=None,
+    use_guetzli=False,
     extra_params=None,
 ):
     """Build image from source image, optionally compressing and resizing.
     "source_image" is the absolute path of the source in the content directory,
     "dst_filename" is the absolute path of the target in the output directory.
     """
+    reporter.report_debug_info("processing image:", dst_filename)
     if width is None and height is None:
         raise ValueError("Must specify at least one of width or height.")
 
@@ -56,8 +58,9 @@ def process_image(
 
     reporter.report_debug_info("imagemagick cmd line", cmdline)
     portable_popen(cmdline).wait()
-    reporter.report_debug_info("guetzli cmd line", cmd2line)
-    portable_popen(cmd2line).wait()
+    if use_guetzli:
+        reporter.report_debug_info("guetzli cmd line", cmd2line)
+        portable_popen(cmd2line).wait()
 
 @buildprogram(Image)
 class ResizedImageBuildProgram(AttachmentBuildProgram):
@@ -85,14 +88,16 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
             if not height:
                 _, height = compute_dimensions(width, None, w, h)
 
+            use_guetzli = bool(conf.get("use_guetzli", "0"))
+
+            if not use_guetzli:
+                use_guetzli = False
+
             df = artifact.source_obj.url_path
             ext_pos = df.rfind(".")
-            if df[ext_pos + 1 :] == 'svg':
-                dst_filename = "%s-%s.png" % (df[:ext_pos], item)
-            else:
-                dst_filename = "%s-%s.%s" % (df[:ext_pos], item, df[ext_pos + 1 :])
+            dst_filename = "%s-%s.%s" % (df[:ext_pos], item, df[ext_pos + 1 :])
 
-            def closure(dst_filename, source_img, width, height, resize_image=True):
+            def closure(dst_filename, source_img, width, height, resize_image=True, ):
                 # We need this closure, otherwise variables get updated and this
                 # doesn't work at all.
                 @ctx.sub_artifact(artifact_name=dst_filename, sources=[source_img])
@@ -107,7 +112,8 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
                             artifact.dst_filename,
                             width,
                             height,
-                            quality=85,
+                            quality=89,
+                            use_guetzli=use_guetzli,
                             extra_params=[
                                 "-strip",
                                 "-interlace",

@@ -11,7 +11,7 @@ The difference between this plugin and the lektor [thumbnail](https://www.getlek
  TL;DR: What does this plugin do?
 ---------------------------------
 + It will generate ``JPEG`` images in the sizes you configured of all images in your Lektor content.
-+ It try to optimize the images with the [guetzli](https://github.com/google/guetzli) JPEG encoder. *(You have to install the guetzli binary by yourself)*
++ It can optionally optimize the images with the [guetzli](https://github.com/google/guetzli) JPEG encoder. *(You have to install the guetzli binary by yourself)*
 
  Usage
 -------
@@ -29,7 +29,7 @@ To install the plugin, just add ``lektor-image-resize`` to your plugins from the
 lektor plugins add lektor-image-resize
 ```
 
-You **have to install** the [guetzli](https://github.com/google/guetzli) JPEG encoder.
+If you want to use the [guetzli](https://github.com/google/guetzli) JPEG encoder for image post-processing, you have to install it manually.
 ```bash
 # example
 apt install guetzli
@@ -54,6 +54,7 @@ max_height = 800
 
 [woowee]
 max_width = 2000
+use_guetzli = True
 ```
 
 Will take a file called `waffle.jpg` and create the files `waffle-small.jpg`,
@@ -61,5 +62,8 @@ Will take a file called `waffle.jpg` and create the files `waffle-small.jpg`,
 of whether the original file is smaller, so you can link without worrying
 whether a file will exist or not. If the original file is smaller than the width
 you have specified, the file will only be copied, and will not be resized.
+
+If you want to run guetzli at the generated output, set ``use_guetzli`` to ``True``.
+
 The `max_width`/`max_height` parameters work like for the [Lektor
 thumbnail](https://www.getlektor.com/docs/api/db/record/thumbnail/) command.
