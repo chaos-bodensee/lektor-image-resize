@@ -1,7 +1,11 @@
  lektor image resize plugin
 ============================
+[![PyPI version](https://badge.fury.io/py/lektor-image-resize.svg)](https://badge.fury.io/py/lektor-image-resize)
+ [![Downloads](https://pepy.tech/badge/lektor-image-resize)](https://pepy.tech/project/lektor-image-resize)
+ [![Linting Python package](https://github.com/chaos-bodensee/lektor-image-resize/actions/workflows/pythonpackage.yml/badge.svg)](https://github.com/chaos-bodensee/lektor-image-resize/actions/workflows/pythonpackage.yml)
+ [![Upload Python Package](https://github.com/chaos-bodensee/lektor-image-resize/actions/workflows/pythonpublish.yml/badge.svg)](https://github.com/chaos-bodensee/lektor-image-resize/actions/workflows/pythonpublish.yml)
 
-This plugin automatically generates thumbnails for any images in your Lektor content.
+This plugin automatically generates thumbnails for any images in your [Lektor](https://getlektor.com) content.
 The difference between this plugin and the lektor [thumbnail](https://www.getlektor.com/docs/api/db/record/thumbnail/) filter is that this plugin is converting all images and you don't need to have any references to the images in your templates.
 
  TL;DR: What does this plugin do?
@@ -35,9 +39,9 @@ If you have trouble, see the [plugin
 installation](https://www.getlektor.com/docs/plugins/) section of the Lektor
 documentation.
 
-Then, create a config file called `configs/thumbnail-generator.ini` and add
+Then, create a config file called `configs/image-resize.ini` and add
 a few sections for images. The section names can be whatever you want, the
-final images will be called `imagename-sectionname.ext`. For example, this
+final images will be called `imagename-sectionname.jpg`. For example, this
 config file:
 
 ```ini

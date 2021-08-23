@@ -25,7 +25,7 @@ setup(
     packages=find_packages(),
     py_modules=['lektor_image_resize'],
     url='https://github.com/chaos-bodensee/lektor-image-resize.git',
-    version='0.1',
+    version='0.2.0',
     classifiers=[
         'Framework :: Lektor',
         'Environment :: Plugins',
