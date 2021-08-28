@@ -22,7 +22,6 @@ def process_image(
     height=None,
     mode=None,
     quality=None,
-    use_guetzli=False,
     extra_params=None,
 ):
     """Build image from source image, optionally compressing and resizing.
@@ -32,8 +31,6 @@ def process_image(
     reporter.report_debug_info("processing image:", dst_filename)
     if width is None and height is None:
         raise ValueError("Must specify at least one of width or height.")
-
-    guetzli = locate_executable('guetzli')
 
     im = find_imagemagick(ctx.build_state.config["IMAGEMAGICK_EXECUTABLE"])
 
@@ -47,20 +44,15 @@ def process_image(
         resize_key += "x" + str(height)
 
     cmdline = [im, source_image, "-auto-orient"]
-    cmd2line = [guetzli]
     cmdline += ["-resize", resize_key]
 
     if extra_params:
         cmdline.extend(extra_params)
 
     cmdline += ["-quality", str(quality), dst_filename]
-    cmd2line += ["--quality", str(quality), dst_filename, dst_filename]
 
     reporter.report_debug_info("imagemagick cmd line", cmdline)
     portable_popen(cmdline).wait()
-    if use_guetzli:
-        reporter.report_debug_info("guetzli cmd line", cmd2line)
-        portable_popen(cmd2line).wait()
 
 @buildprogram(Image)
 class ResizedImageBuildProgram(AttachmentBuildProgram):
@@ -88,11 +80,6 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
             if not height:
                 _, height = compute_dimensions(width, None, w, h)
 
-            use_guetzli = bool(conf.get("use_guetzli", "0"))
-
-            if not use_guetzli:
-                use_guetzli = False
-
             df = artifact.source_obj.url_path
             ext_pos = df.rfind(".")
             dst_filename = "%s-%s.%s" % (df[:ext_pos], item, df[ext_pos + 1 :])
@@ -113,7 +100,6 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
                             width,
                             height,
                             quality=89,
-                            use_guetzli=use_guetzli,
                             extra_params=[
                                 "-strip",
                                 "-interlace",
@@ -129,7 +115,7 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
 
 class ImageResizePlugin(Plugin):
     name = u"thumbnail-generator"
-    description = u"A configurable way to generate thumbnails and optimize them with guetzli."
+    description = u"A configurable way to generate thumbnails."
     image_exts = ["jpg", "jpeg"]
 
     @cached_property
