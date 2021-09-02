@@ -26,7 +26,7 @@ setup(
     py_modules=['lektor_image_resize'],
     url='https://github.com/chaos-bodensee/lektor-image-resize.git',
     version='0.4.1',
-    install_requires=['Pillow'],
+    install_requires=['webptools'],
     classifiers=[
         'Framework :: Lektor',
         'Environment :: Plugins',

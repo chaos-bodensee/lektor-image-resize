@@ -2,6 +2,8 @@
 import os
 import shutil
 
+from webptools import cwebp
+
 from lektor.build_programs import AttachmentBuildProgram, buildprogram
 from lektor.context import get_ctx
 from lektor.db import Image
@@ -53,6 +55,22 @@ def process_image(
 
     reporter.report_debug_info("imagemagick cmd line", cmdline)
     portable_popen(cmdline).wait()
+
+def convert_webp(
+    ctx,
+    source_img,
+    dst_filename,
+    width=None,
+    height=None,
+    mode=None,
+    quality=None,
+):
+    cwebp(
+        input_image=source_img,
+        output_image=dst_filename,
+        option="-q " + str(quality),
+        )
+
 
 @buildprogram(Image)
 class ResizedImageBuildProgram(AttachmentBuildProgram):
@@ -106,6 +124,15 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
                                 "Plane",
                             ],
                         )
+                    convert_webp(
+                        ctx,
+                        source_img,
+                        artifact.dst_filename + '.webp',
+                        width,
+                        height,
+                        quality=89,
+                    )
+
 
             # If the image is larger than the max_width, resize it, otherwise
             # just copy it.
@@ -116,7 +143,7 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
 class ImageResizePlugin(Plugin):
     name = u"thumbnail-generator"
     description = u"A configurable way to generate thumbnails."
-    image_exts = ["jpg", "jpeg"]
+    image_exts = ["jpg", "jpeg", "webp"]
 
     @cached_property
     def config(self):
