@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import ast
 import io
 import re
@@ -17,7 +18,7 @@ setup(
     author='L3D',
     author_email='l3d@c3woc.de',
     description=description,
-    keywords='Lektor plugin image resize',
+    keywords='Lektor plugin to generate webp and jpg thumbnails in the defined sizes',
     license='MIT',
     long_description=readme,
     long_description_content_type='text/markdown',
