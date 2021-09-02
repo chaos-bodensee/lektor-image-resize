@@ -15,6 +15,7 @@ from lektor.reporter import reporter
 from lektor.utils import portable_popen
 from werkzeug.utils import cached_property
 
+
 # We override process_image here because Lektor does not support adding extra
 # parameters yet, but maybe it will soon, and this can be removed when it does.
 def process_image(
@@ -99,6 +100,7 @@ def process_image_webp(
     reporter.report_debug_info("imagemagick cmd line", cmdline)
     portable_popen(cmdline).wait()
 
+
 @buildprogram(Image)
 class ResizedImageBuildProgram(AttachmentBuildProgram):
     def build_artifact(self, artifact):
@@ -146,11 +148,7 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
                             width,
                             height,
                             quality=89,
-                            extra_params=[
-                                "-strip",
-                                "-interlace",
-                                "Plane",
-                            ],
+                            extra_params=['-strip', '-interlace', 'Plane',],
                         )
 
             def webclosure(dst_webpname, source_img, width, height, resize_image=True, ):
@@ -164,11 +162,7 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
                         width,
                         height,
                         quality=89,
-                        extra_params=[
-                            "-strip",
-                            "-interlace",
-                            "Plane",
-                        ],
+                        extra_params=['-strip', '-interlace', 'Plane',],
                         resize_image = resize_image,
                     )
 
