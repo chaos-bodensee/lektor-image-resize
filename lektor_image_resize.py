@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-import os
-import shutil
+#  This Lektor plugin is using ImageMagic (convert)
+#  to convert images to different pre-configured thumbnails
+#  as .jpg and .webp.
 
-from webptools import cwebp
+import shutil
 
 from lektor.build_programs import AttachmentBuildProgram, buildprogram
 from lektor.context import get_ctx
@@ -11,7 +12,7 @@ from lektor.imagetools import (compute_dimensions, find_imagemagick,
                                get_image_info, get_quality)
 from lektor.pluginsystem import Plugin
 from lektor.reporter import reporter
-from lektor.utils import portable_popen, locate_executable
+from lektor.utils import portable_popen
 from werkzeug.utils import cached_property
 
 # We override process_image here because Lektor does not support adding extra
@@ -19,22 +20,21 @@ from werkzeug.utils import cached_property
 def process_image(
     ctx,
     source_image,
-    dst_jpegname,
+    dst_imagename,
     width=None,
     height=None,
-    mode=None,
     quality=None,
     extra_params=None,
 ):
     """Build image from source image, optionally compressing and resizing.
     "source_image" is the absolute path of the source in the content directory,
-    "dst_jpegname" is the absolute path of the target in the output directory.
+    "dst_imagename" is the absolute path of the target in the output directory.
     """
-    reporter.report_debug_info("processing image:", dst_jpegname)
+    reporter.report_debug_info("processing image:", dst_imagename)
     if width is None and height is None:
         raise ValueError("Must specify at least one of width or height.")
 
-    im = find_imagemagick(ctx.build_state.config["IMAGEMAGICK_EXECUTABLE"])
+    convert = find_imagemagick(ctx.build_state.config["IMAGEMAGICK_EXECUTABLE"])
 
     if quality is None:
         quality = get_quality(source_image)
@@ -45,55 +45,58 @@ def process_image(
     if height is not None:
         resize_key += "x" + str(height)
 
-    cmdline = [im, source_image, "-auto-orient"]
+    cmdline = [convert, source_image, "-auto-orient"]
     cmdline += ["-resize", resize_key]
 
     if extra_params:
         cmdline.extend(extra_params)
 
     cmdline += ['-define', 'thread-level=1']
-    cmdline += ["-quality", str(quality), dst_jpegname]
+    cmdline += ["-quality", str(quality), dst_imagename]
 
     reporter.report_debug_info("imagemagick cmd line", cmdline)
     portable_popen(cmdline).wait()
 
+
+# we create a own webp processing funktion, like
+# the process_image() function but for webp images
 def process_image_webp(
     ctx,
     source_image,
-    dst_webpname,
+    dst_imagename,
     width=None,
     height=None,
-    mode=None,
     quality=None,
     extra_params=None,
+    resize_image=True,
 ):
-    reporter.report_debug_info("processing image:", dst_webpname)
+    reporter.report_debug_info("processing image:", dst_imagename)
     if width is None and height is None:
         raise ValueError("Must specify at least one of width or height.")
 
-    im = find_imagemagick(ctx.build_state.config["IMAGEMAGICK_EXECUTABLE"])
+    convert = find_imagemagick(ctx.build_state.config["IMAGEMAGICK_EXECUTABLE"])
 
     if quality is None:
         quality = get_quality(source_image)
 
-    resize_key = ""
-    if width is not None:
-        resize_key += str(width)
-    if height is not None:
-        resize_key += "x" + str(height)
+    cmdline = [convert, source_image, "-auto-orient"]
 
-    cmdline = [im, source_image, "-auto-orient"]
-    cmdline += ["-resize", resize_key]
+    if resize_image:
+        resize_key = ""
+        if width is not None:
+            resize_key += str(width)
+        if height is not None:
+            resize_key += "x" + str(height)
+        cmdline += ["-resize", resize_key]
 
     cmdline += ['-define', 'webp:lossless=false', '-define', 'thread-level=1']
 
     if extra_params:
         cmdline.extend(extra_params)
 
-    cmdline += ["-quality", str(quality), dst_webpname]
+    cmdline += ["-quality", str(quality), dst_imagename]
 
     reporter.report_debug_info("imagemagick cmd line", cmdline)
-    #print("imagemagick cmd line", cmdline)
     portable_popen(cmdline).wait()
 
 @buildprogram(Image)
@@ -111,8 +114,8 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
 
         source_img = artifact.source_obj.attachment_filename
 
-        with open(source_img, "rb") as f:
-            _, w, h = get_image_info(f)
+        with open(source_img, "rb") as file:
+            _, _width, _height = get_image_info(file)
 
         # For every section in the config, we need to generate one image.
         for item, conf in config.items():
@@ -120,12 +123,12 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
             height = int(conf.get("max_height", "0"))
 
             if not height:
-                _, height = compute_dimensions(width, None, w, h)
+                _, height = compute_dimensions(width, None, _width, _height)
 
-            df = artifact.source_obj.url_path
-            ext_pos = df.rfind(".")
-            dst_jpegname = "%s-%s.jpg" % (df[:ext_pos], item)
-            dst_webpname = "%s-%s.webp" % (df[:ext_pos], item)
+            filename = artifact.source_obj.url_path
+            ext_pos = filename.rfind(".")
+            dst_jpegname = "%s-%s.jpg" % (filename[:ext_pos], item)
+            dst_webpname = "%s-%s.webp" % (filename[:ext_pos], item)
 
             def closure(dst_jpegname, source_img, width, height, resize_image=True, ):
                 # We need this closure, otherwise variables get updated and this
@@ -166,19 +169,20 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
                             "-interlace",
                             "Plane",
                         ],
+                        resize_image = resize_image,
                     )
 
             # If the image is larger than the max_width, resize it, otherwise
             # just copy it.
-            resize_image = w > width or h > height
+            resize_image = _width > width or _height > height
             closure(dst_jpegname, source_img, width, height, resize_image)
             webclosure(dst_webpname, source_img, width, height, resize_image)
 
 
 class ImageResizePlugin(Plugin):
-    name = u"thumbnail-generator"
-    description = u"A configurable way to generate thumbnails."
-    image_exts = ["jpg", "jpeg", "webp"]
+    name = "thumbnail-generator"
+    description = "A configurable way to generate thumbnails."
+    image_exts = ["jpg", "webp"]
 
     @cached_property
     def config(self):
