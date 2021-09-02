@@ -19,7 +19,7 @@ from werkzeug.utils import cached_property
 def process_image(
     ctx,
     source_image,
-    dst_filename,
+    dst_jpegname,
     width=None,
     height=None,
     mode=None,
@@ -28,9 +28,9 @@ def process_image(
 ):
     """Build image from source image, optionally compressing and resizing.
     "source_image" is the absolute path of the source in the content directory,
-    "dst_filename" is the absolute path of the target in the output directory.
+    "dst_jpegname" is the absolute path of the target in the output directory.
     """
-    reporter.report_debug_info("processing image:", dst_filename)
+    reporter.report_debug_info("processing image:", dst_jpegname)
     if width is None and height is None:
         raise ValueError("Must specify at least one of width or height.")
 
@@ -51,7 +51,7 @@ def process_image(
     if extra_params:
         cmdline.extend(extra_params)
 
-    cmdline += ["-quality", str(quality), dst_filename]
+    cmdline += ["-quality", str(quality), dst_jpegname]
 
     reporter.report_debug_info("imagemagick cmd line", cmdline)
     portable_popen(cmdline).wait()
@@ -59,18 +59,27 @@ def process_image(
 def convert_webp(
     ctx,
     source_img,
-    dst_filename,
+    dst_webpname,
     width=None,
     height=None,
     mode=None,
     quality=None,
+    resize_image=True,
 ):
-    cwebp(
-        input_image=source_img,
-        output_image=dst_filename,
-        option="-q " + str(quality),
-        )
+    reporter.report_debug_info("processing image:", dst_webpname)
+    if width is None and height is None:
+        raise ValueError("Must specify at least one of width or height.")
 
+    if quality is None:
+        quality = get_quality(source_image)
+
+    processing = cwebp(
+        input_image=source_img,
+        output_image=dst_webpname,
+        option="-q " + str(quality),
+    )
+    reporter.report_debug_info("webp command line:", processing)
+    portable_popen(processing).wait()
 
 @buildprogram(Image)
 class ResizedImageBuildProgram(AttachmentBuildProgram):
@@ -100,16 +109,17 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
 
             df = artifact.source_obj.url_path
             ext_pos = df.rfind(".")
-            dst_filename = "%s-%s.%s" % (df[:ext_pos], item, df[ext_pos + 1 :])
+            dst_jpegname = "%s-%s.jpg" % (df[:ext_pos], item)
+            dst_webpname = "%s-%s.webp" % (df[:ext_pos], item)
 
-            def closure(dst_filename, source_img, width, height, resize_image=True, ):
+            def closure(dst_jpegname, source_img, width, height, resize_image=True, ):
                 # We need this closure, otherwise variables get updated and this
                 # doesn't work at all.
-                @ctx.sub_artifact(artifact_name=dst_filename, sources=[source_img])
+                @ctx.sub_artifact(artifact_name=dst_jpegname, sources=[source_img])
                 def build_thumbnail_artifact(artifact):
                     artifact.ensure_dir()
                     if not resize_image:
-                        shutil.copy2(source_img, artifact.dst_filename)
+                        shutil.copy2(source_img, artifact.dst_jpegname)
                     else:
                         process_image(
                             ctx,
@@ -124,20 +134,26 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
                                 "Plane",
                             ],
                         )
+
+            def webclosure(dst_webpname, source_img, width, height, resize_image=True, ):
+                @ctx.sub_artifact(artifact_name=dst_webpname, sources=[source_img])
+                def build_thumbnail_artifact(artifact):
+                    artifact.ensure_dir()
                     convert_webp(
                         ctx,
                         source_img,
-                        artifact.dst_filename + '.webp',
+                        artifact.dst_filename,
                         width,
                         height,
                         quality=89,
+                        resize_image=resize_image,
                     )
-
 
             # If the image is larger than the max_width, resize it, otherwise
             # just copy it.
             resize_image = w > width or h > height
-            closure(dst_filename, source_img, width, height, resize_image)
+            closure(dst_jpegname, source_img, width, height, resize_image)
+            webclosure(dst_webpname, source_img, width, height, resize_image)
 
 
 class ImageResizePlugin(Plugin):
