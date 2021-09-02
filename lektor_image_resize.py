@@ -51,35 +51,50 @@ def process_image(
     if extra_params:
         cmdline.extend(extra_params)
 
+    cmdline += ['-define', 'thread-level=1']
     cmdline += ["-quality", str(quality), dst_jpegname]
 
     reporter.report_debug_info("imagemagick cmd line", cmdline)
     portable_popen(cmdline).wait()
 
-def convert_webp(
+def process_image_webp(
     ctx,
-    source_img,
+    source_image,
     dst_webpname,
     width=None,
     height=None,
     mode=None,
     quality=None,
-    resize_image=True,
+    extra_params=None,
 ):
     reporter.report_debug_info("processing image:", dst_webpname)
     if width is None and height is None:
         raise ValueError("Must specify at least one of width or height.")
 
+    im = find_imagemagick(ctx.build_state.config["IMAGEMAGICK_EXECUTABLE"])
+
     if quality is None:
         quality = get_quality(source_image)
 
-    processing = cwebp(
-        input_image=source_img,
-        output_image=dst_webpname,
-        option="-q " + str(quality),
-    )
-    reporter.report_debug_info("webp command line:", processing)
-    portable_popen(processing).wait()
+    resize_key = ""
+    if width is not None:
+        resize_key += str(width)
+    if height is not None:
+        resize_key += "x" + str(height)
+
+    cmdline = [im, source_image, "-auto-orient"]
+    cmdline += ["-resize", resize_key]
+
+    cmdline += ['-define', 'webp:lossless=false', '-define', 'thread-level=1']
+
+    if extra_params:
+        cmdline.extend(extra_params)
+
+    cmdline += ["-quality", str(quality), dst_webpname]
+
+    reporter.report_debug_info("imagemagick cmd line", cmdline)
+    #print("imagemagick cmd line", cmdline)
+    portable_popen(cmdline).wait()
 
 @buildprogram(Image)
 class ResizedImageBuildProgram(AttachmentBuildProgram):
@@ -139,14 +154,18 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
                 @ctx.sub_artifact(artifact_name=dst_webpname, sources=[source_img])
                 def build_thumbnail_artifact(artifact):
                     artifact.ensure_dir()
-                    convert_webp(
+                    process_image_webp(
                         ctx,
                         source_img,
                         artifact.dst_filename,
                         width,
                         height,
                         quality=89,
-                        resize_image=resize_image,
+                        extra_params=[
+                            "-strip",
+                            "-interlace",
+                            "Plane",
+                        ],
                     )
 
             # If the image is larger than the max_width, resize it, otherwise

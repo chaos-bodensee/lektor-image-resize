@@ -11,7 +11,7 @@ The difference between this plugin and the lektor [thumbnail](https://www.getlek
  TL;DR: What does this plugin do?
 ---------------------------------
 + It will generate ``JPEG`` images in the sizes you configured of all images in your Lektor content using ``imagemagic``.
-+ It will generate ``WEBP`` images in the same sizes using ``Pillow``.
++ It will generate ``WEBP`` images in the same sizes using ``imagemagic``.
 
  Usage
 -------
