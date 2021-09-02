@@ -22,7 +22,7 @@ All images will be converted to webp using [Pillow](https://pypi.org/project/Pil
 You can use the images like that:
 ```html
 <a href="waffle.jpg"><img src="waffle-small.jpg" /></a>
-<a href="waffle.jpg"><img src="waffle-small.jpg.webp" /></a>
+<a href="waffle.jpg"><img src="waffle-small.webp" /></a>
 ```
 
  Installation
@@ -38,7 +38,7 @@ documentation.
 
 Then, create a config file called `configs/image-resize.ini` and add
 a few sections for images. The section names can be whatever you want, the
-final images will be called ``$(imagename)-$(sectionname).jpg`` and ``$(imagename)-$(sectionname).jpg.webp``.
+final images will be called ``$(imagename)-$(sectionname).jpg`` and ``$(imagename)-$(sectionname).webp``.
 
 Here is a example config file:
 
@@ -55,8 +55,8 @@ max_width = 2000
 ```
 
 Will take a file called `waffle.jpg` and create the files `waffle-small.jpg`,
-`waffle-medium.jpg` and `waffle-woowee.jpg` as well as `waffle-small.jpg.webp`,
-`waffle-medium.jpg.webp` and `waffle-woowee.jpg.webp` All the files will be created,
+`waffle-medium.jpg` and `waffle-woowee.jpg` as well as `waffle-small.webp`,
+`waffle-medium.webp` and `waffle-woowee.webp` All the files will be created,
 regardless of whether the original file is smaller, so you can link without worrying
 whether a file will exist or not. If the original file is smaller than the width
 you have specified, the file will only be copied, and will not be resized.
