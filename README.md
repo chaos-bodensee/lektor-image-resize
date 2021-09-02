@@ -21,14 +21,24 @@ All images will be converted to webp using [Pillow](https://pypi.org/project/Pil
 
 You can use the images like that:
 ```html
+<!-- Simple example -->
 <a href="waffle.jpg"><img src="waffle-small.jpg" /></a>
-<a href="waffle.jpg"><img src="waffle-small.webp" /></a>
+
+<!-- example with srcset -->
+<a href="waffle-woowee.webp">
+  <img src="waffle-small.webp"
+    srcset="waffle-small.webp  512w,   // Viewport bis zu 512
+            waffle-medium.webp 900w,   // Viewport größer als 512
+            waffle-woowee.webp 1440w"  // Viewport größer als 900
+  />
+</a>
 ```
 
  Installation
 --------------
-To install the plugin, just add ``lektor-image-resize`` to your plugins from the command line:
+To install the plugin, add ``lektor-image-resize`` to your plugins from the command line and create a config file:
 ```bash
+# add the plugin to lektor
 lektor plugins add lektor-image-resize
 ```
 
@@ -36,7 +46,7 @@ If you have trouble, see the [plugin
 installation](https://www.getlektor.com/docs/plugins/) section of the Lektor
 documentation.
 
-Then, create a config file called `configs/image-resize.ini` and add
+Create a config file called `configs/image-resize.ini` and add
 a few sections for images. The section names can be whatever you want, the
 final images will be called ``$(imagename)-$(sectionname).jpg`` and ``$(imagename)-$(sectionname).webp``.
 
@@ -51,7 +61,7 @@ max_width = 900
 max_height = 900
 
 [woowee]
-max_width = 2000
+max_width = 1440
 ```
 
 Will take a file called `waffle.jpg` and create the files `waffle-small.jpg`,
