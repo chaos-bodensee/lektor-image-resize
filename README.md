@@ -1,11 +1,14 @@
  lektor image resize plugin
 ============================
-[![PyPI version](https://badge.fury.io/py/lektor-image-resize.svg)](https://badge.fury.io/py/lektor-image-resize)
- [![Downloads](https://pepy.tech/badge/lektor-image-resize)](https://pepy.tech/project/lektor-image-resize)
- [![Linting Python package](https://github.com/chaos-bodensee/lektor-image-resize/actions/workflows/pythonpackage.yml/badge.svg)](https://github.com/chaos-bodensee/lektor-image-resize/actions/workflows/pythonpackage.yml)
- [![Upload Python Package](https://github.com/chaos-bodensee/lektor-image-resize/actions/workflows/pythonpublish.yml/badge.svg)](https://github.com/chaos-bodensee/lektor-image-resize/actions/workflows/pythonpublish.yml)
 
-This plugin automatically generates thumbnails for any images in your [Lektor](https://getlektor.com) content.
+[![PyPI version](https://badge.fury.io/py/lektor-image-resize.svg)](https://badge.fury.io/py/lektor-image-resize)
+[![Downloads](https://pepy.tech/badge/lektor-image-resize)](https://pepy.tech/project/lektor-image-resize)
+[![Linting Python package](https://github.com/chaos-bodensee/lektor-image-resize/actions/workflows/pythonpackage.yml/badge.svg)](https://github.com/chaos-bodensee/lektor-image-resize/actions/workflows/pythonpackage.yml)
+[![Upload Python Package](https://github.com/chaos-bodensee/lektor-image-resize/actions/workflows/pythonpublish.yml/badge.svg)](https://github.com/chaos-bodensee/lektor-image-resize/actions/workflows/pythonpublish.yml)
+[![MIT License](https://raw.githubusercontent.com/chaos-bodensee/lektor-image-resize/main/.github/license.svg?sanitize=true)](https://github.com/chaos-bodensee/lektor-image-resize/blob/main/LICENSE)
+
+
+This plugin generates JPG and WEBP Images and Thumbnails in predefined sizes for any images in your [Lektor](https://getlektor.com) content.
 The difference between this plugin and the lektor [thumbnail](https://www.getlektor.com/docs/api/db/record/thumbnail/) filter is that this plugin is converting all images and you don't need to have any references to the images in your templates.
 
  TL;DR: What does this plugin do?
@@ -73,3 +76,7 @@ you have specified, the file will only be copied, and will not be resized.
 
 The `max_width`/`max_height` parameters work like for the [Lektor
 thumbnail](https://www.getlektor.com/docs/api/db/record/thumbnail/) command.
+
+ Good to know
+---------------
+There is a filter plugin avaliable at [lektor-image-filter](https://github.com/chaos-bodensee/lektor-image-filter.git) available, that can help you to use the image in all configured sizes,
