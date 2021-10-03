@@ -175,7 +175,7 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
 
 class ImageResizePlugin(Plugin):
     name = "thumbnail-generator"
-    description = "A configurable way to generate thumbnails."
+    description = "Generate JPG and WEBP Images and Thumbnails in predefined sizes."
     image_exts = ["jpg", "webp"]
 
     @cached_property

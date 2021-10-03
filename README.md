@@ -5,7 +5,7 @@
  [![Linting Python package](https://github.com/chaos-bodensee/lektor-image-resize/actions/workflows/pythonpackage.yml/badge.svg)](https://github.com/chaos-bodensee/lektor-image-resize/actions/workflows/pythonpackage.yml)
  [![Upload Python Package](https://github.com/chaos-bodensee/lektor-image-resize/actions/workflows/pythonpublish.yml/badge.svg)](https://github.com/chaos-bodensee/lektor-image-resize/actions/workflows/pythonpublish.yml)
 
-This plugin automatically generates thumbnails for any images in your [Lektor](https://getlektor.com) content.
+This plugin generates JPG and WEBP Images and Thumbnails in predefined sizes for any images in your [Lektor](https://getlektor.com) content.
 The difference between this plugin and the lektor [thumbnail](https://www.getlektor.com/docs/api/db/record/thumbnail/) filter is that this plugin is converting all images and you don't need to have any references to the images in your templates.
 
  TL;DR: What does this plugin do?
