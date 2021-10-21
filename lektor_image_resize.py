@@ -103,6 +103,9 @@ def process_image_webp(
 
 @buildprogram(Image)
 class ResizedImageBuildProgram(AttachmentBuildProgram):
+    """
+      Build all images in lektor content at initialisation...
+    """
     def build_artifact(self, artifact):
         ctx = get_ctx()
         plugin = ctx.env.plugins["image-resize"]
@@ -121,25 +124,37 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
 
         # For every section in the config, we need to generate one image.
         for item, conf in config.items():
-            width = int(conf["max_width"])
-            height = int(conf.get("max_height", "0"))
-
-            if not height:
-                _, height = compute_dimensions(width, None, _width, _height)
-
+            print(str(conf))
+            width = int(conf.get("width", 0))
+            height = int(conf.get("height", "0"))
             filename = artifact.source_obj.url_path
             ext_pos = filename.rfind(".")
+            filename_prefix = "%s-%s" % (filename[:ext_pos], item)
             dst_jpegname = "%s-%s.jpg" % (filename[:ext_pos], item)
             dst_webpname = "%s-%s.webp" % (filename[:ext_pos], item)
 
-            def closure(dst_jpegname, source_img, width, height, resize_image=True, ):
+            """
+              makeing sure width and height are defined
+            """
+            if width < 1:
+                if height < 1:
+                    width = int(1280)
+                    height = int(720)
+                    print(f"WARNING: No size detected for {filename_prefix}, falling back to 1280x720. Plese define at least width or height in 'configs/image-resize.ini'!")
+                else:
+                    _, width = compute_dimensions(height, None, _height, _width)
+            if height < 1:
+                _, height = compute_dimensions(width, None, _width, _height)
+
+            def closure(filename_prefix, filename_suffix, source_img, width, height, resize_image=True, ):
                 # We need this closure, otherwise variables get updated and this
                 # doesn't work at all.
-                @ctx.sub_artifact(artifact_name=dst_jpegname, sources=[source_img])
+                dst_filename = str(f"{filename_prefix}.{filename_suffix}")
+                @ctx.sub_artifact(artifact_name=dst_filename, sources=[source_img])
                 def build_thumbnail_artifact(artifact):
                     artifact.ensure_dir()
                     if not resize_image:
-                        shutil.copy2(source_img, artifact.dst_jpegname)
+                        shutil.copy2(source_img, artifact.dst_filename)
                     else:
                         process_image(
                             ctx,
@@ -166,7 +181,7 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
                         resize_image = resize_image,
                     )
 
-            # If the image is larger than the max_width, resize it, otherwise
+            # If the image is larger than the width, resize it, otherwise
             # just copy it.
             resize_image = _width > width or _height > height
             closure(dst_jpegname, source_img, width, height, resize_image)
