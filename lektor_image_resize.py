@@ -26,6 +26,8 @@ def process_image(
     height=None,
     quality=None,
     extra_params=None,
+    resize_image=True,
+    file_format=None,
 ):
     """Build image from source image, optionally compressing and resizing.
     "source_image" is the absolute path of the source in the content directory,
@@ -36,51 +38,10 @@ def process_image(
         raise ValueError("Must specify at least one of width or height.")
 
     convert = find_imagemagick(ctx.build_state.config["IMAGEMAGICK_EXECUTABLE"])
+    cmdline = [convert, source_image, "-auto-orient"]
 
     if quality is None:
         quality = get_quality(source_image)
-
-    resize_key = ""
-    if width is not None:
-        resize_key += str(width)
-    if height is not None:
-        resize_key += "x" + str(height)
-
-    cmdline = [convert, source_image, "-auto-orient"]
-    cmdline += ["-resize", resize_key]
-
-    if extra_params:
-        cmdline.extend(extra_params)
-
-    cmdline += ['-define', 'thread-level=1']
-    cmdline += ["-quality", str(quality), dst_imagename]
-
-    reporter.report_debug_info("imagemagick cmd line", cmdline)
-    portable_popen(cmdline).wait()
-
-
-# we create a own webp processing funktion, like
-# the process_image() function but for webp images
-def process_image_webp(
-    ctx,
-    source_image,
-    dst_imagename,
-    width=None,
-    height=None,
-    quality=None,
-    extra_params=None,
-    resize_image=True,
-):
-    reporter.report_debug_info("processing image:", dst_imagename)
-    if width is None and height is None:
-        raise ValueError("Must specify at least one of width or height.")
-
-    convert = find_imagemagick(ctx.build_state.config["IMAGEMAGICK_EXECUTABLE"])
-
-    if quality is None:
-        quality = get_quality(source_image)
-
-    cmdline = [convert, source_image, "-auto-orient"]
 
     if resize_image:
         resize_key = ""
@@ -90,11 +51,13 @@ def process_image_webp(
             resize_key += "x" + str(height)
         cmdline += ["-resize", resize_key]
 
-    cmdline += ['-define', 'webp:lossless=false', '-define', 'thread-level=1']
+    if file_format == 'webp':
+        cmdline += ['-define', 'webp:lossless=false']
 
     if extra_params:
         cmdline.extend(extra_params)
 
+    cmdline += ['-define', 'thread-level=1']
     cmdline += ["-quality", str(quality), dst_imagename]
 
     reporter.report_debug_info("imagemagick cmd line", cmdline)
@@ -124,15 +87,12 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
 
         # For every section in the config, we need to generate one image.
         for item, conf in config.items():
-            print(str(conf))
             width = int(conf.get("width", 0))
             height = int(conf.get("height", "0"))
             filename = artifact.source_obj.url_path
             ext_pos = filename.rfind(".")
             filename_prefix = "%s-%s" % (filename[:ext_pos], item)
-            dst_jpegname = "%s-%s.jpg" % (filename[:ext_pos], item)
-            dst_webpname = "%s-%s.webp" % (filename[:ext_pos], item)
-
+            filename_suffixes = ['jpg', 'webp']
             """
               makeing sure width and height are defined
             """
@@ -146,46 +106,33 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
             if height < 1:
                 _, height = compute_dimensions(width, None, _width, _height)
 
-            def closure(filename_prefix, filename_suffix, source_img, width, height, resize_image=True, ):
+            for filename_suffix in filename_suffixes:
+                """
+                    run loop for each file we want to export
+                """
+                def closure(filename_prefix, filename_suffix, source_img, width, height, resize_image=True, ):
                 # We need this closure, otherwise variables get updated and this
                 # doesn't work at all.
-                dst_filename = str(f"{filename_prefix}.{filename_suffix}")
-                @ctx.sub_artifact(artifact_name=dst_filename, sources=[source_img])
-                def build_thumbnail_artifact(artifact):
-                    artifact.ensure_dir()
-                    if not resize_image:
-                        shutil.copy2(source_img, artifact.dst_filename)
-                    else:
-                        process_image(
-                            ctx,
-                            source_img,
-                            artifact.dst_filename,
-                            width,
-                            height,
-                            quality=89,
-                            extra_params=['-strip', '-interlace', 'Plane',],
-                        )
-
-            def webclosure(dst_webpname, source_img, width, height, resize_image=True, ):
-                @ctx.sub_artifact(artifact_name=dst_webpname, sources=[source_img])
-                def build_thumbnail_artifact(artifact):
-                    artifact.ensure_dir()
-                    process_image_webp(
-                        ctx,
-                        source_img,
-                        artifact.dst_filename,
-                        width,
-                        height,
-                        quality=89,
-                        extra_params=['-strip', '-interlace', 'Plane',],
-                        resize_image = resize_image,
-                    )
-
-            # If the image is larger than the width, resize it, otherwise
-            # just copy it.
-            resize_image = _width > width or _height > height
-            closure(dst_jpegname, source_img, width, height, resize_image)
-            webclosure(dst_webpname, source_img, width, height, resize_image)
+                    dst_filename = f"{filename_prefix}.{filename_suffix}"
+                    @ctx.sub_artifact(artifact_name=dst_filename, sources=[source_img])
+                    def build_thumbnail_artifact(artifact):
+                        artifact.ensure_dir()
+                        if not resize_image and filename_suffix != 'webp':
+                            shutil.copy2(source_img, artifact.dst_filename)
+                        else:
+                            process_image(
+                                ctx,
+                                source_img,
+                                artifact.dst_filename,
+                                width,
+                                height,
+                                quality=89,
+                                extra_params=['-strip', '-interlace', 'Plane',],
+                                resize_image=resize_image,
+                                file_format=filename_prefix,
+                            )
+                resize_image = _width > width or _height > height
+                closure(filename_prefix, filename_suffix, source_img, width, height, bool(resize_image))
 
 
 class ImageResizePlugin(Plugin):
