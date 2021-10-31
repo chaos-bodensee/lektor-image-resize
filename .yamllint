@@ -1,0 +1,14 @@
+---
+extends: default
+
+rules:
+  # 150 chars should be enough, but don't fail if a line is longer
+  line-length:
+    max: 180
+    level: warning
+
+ignore: |
+  host_vars/mail01.l3d.space/vault.yml
+  host_vars/web01.l3d.space/vault.yml
+  group_vars/all/vault.yml
+  roles/

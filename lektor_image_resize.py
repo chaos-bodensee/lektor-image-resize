@@ -22,32 +22,40 @@ def process_image(
     ctx,
     source_image,
     dst_imagename,
-    width=None,
-    height=None,
-    quality=None,
+    whqffdict=None,
     extra_params=None,
+    resize_image=True,
 ):
     """Build image from source image, optionally compressing and resizing.
     "source_image" is the absolute path of the source in the content directory,
     "dst_imagename" is the absolute path of the target in the output directory.
     """
     reporter.report_debug_info("processing image:", dst_imagename)
+    if whqffdict is not None:
+        width=int(whqffdict['width'])
+        height=int(whqffdict['height'])
+        quality=int(whqffdict['quality'])
+        file_format=str(whqffdict['file_format'])
+
     if width is None and height is None:
         raise ValueError("Must specify at least one of width or height.")
 
     convert = find_imagemagick(ctx.build_state.config["IMAGEMAGICK_EXECUTABLE"])
+    cmdline = [convert, source_image, "-auto-orient"]
 
     if quality is None:
         quality = get_quality(source_image)
 
-    resize_key = ""
-    if width is not None:
-        resize_key += str(width)
-    if height is not None:
-        resize_key += "x" + str(height)
+    if resize_image:
+        resize_key = ""
+        if width is not None:
+            resize_key += str(width)
+        if height is not None:
+            resize_key += "x" + str(height)
+        cmdline += ["-resize", resize_key]
 
-    cmdline = [convert, source_image, "-auto-orient"]
-    cmdline += ["-resize", resize_key]
+    if file_format == 'webp':
+        cmdline += ['-define', 'webp:lossless=false']
 
     if extra_params:
         cmdline.extend(extra_params)
@@ -59,50 +67,11 @@ def process_image(
     portable_popen(cmdline).wait()
 
 
-# we create a own webp processing funktion, like
-# the process_image() function but for webp images
-def process_image_webp(
-    ctx,
-    source_image,
-    dst_imagename,
-    width=None,
-    height=None,
-    quality=None,
-    extra_params=None,
-    resize_image=True,
-):
-    reporter.report_debug_info("processing image:", dst_imagename)
-    if width is None and height is None:
-        raise ValueError("Must specify at least one of width or height.")
-
-    convert = find_imagemagick(ctx.build_state.config["IMAGEMAGICK_EXECUTABLE"])
-
-    if quality is None:
-        quality = get_quality(source_image)
-
-    cmdline = [convert, source_image, "-auto-orient"]
-
-    if resize_image:
-        resize_key = ""
-        if width is not None:
-            resize_key += str(width)
-        if height is not None:
-            resize_key += "x" + str(height)
-        cmdline += ["-resize", resize_key]
-
-    cmdline += ['-define', 'webp:lossless=false', '-define', 'thread-level=1']
-
-    if extra_params:
-        cmdline.extend(extra_params)
-
-    cmdline += ["-quality", str(quality), dst_imagename]
-
-    reporter.report_debug_info("imagemagick cmd line", cmdline)
-    portable_popen(cmdline).wait()
-
-
 @buildprogram(Image)
 class ResizedImageBuildProgram(AttachmentBuildProgram):
+    """
+      Build all images in lektor content at initialisation...
+    """
     def build_artifact(self, artifact):
         ctx = get_ctx()
         plugin = ctx.env.plugins["image-resize"]
@@ -121,56 +90,57 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
 
         # For every section in the config, we need to generate one image.
         for item, conf in config.items():
-            width = int(conf["max_width"])
-            height = int(conf.get("max_height", "0"))
-
-            if not height:
-                _, height = compute_dimensions(width, None, _width, _height)
-
+            width = int(conf.get("width", 0))
+            height = int(conf.get("height", "0"))
             filename = artifact.source_obj.url_path
             ext_pos = filename.rfind(".")
-            dst_jpegname = "%s-%s.jpg" % (filename[:ext_pos], item)
-            dst_webpname = "%s-%s.webp" % (filename[:ext_pos], item)
+            f_prefix = f"{filename[:ext_pos]}-{item}"
+            f_suffixes = ['jpg', 'webp']
+            """
+              makeing sure width and height are defined
+            """
+            if width < 1:
+                if height < 1:
+                    width = int(1280)
+                    height = int(720)
+                    print("WARNING: No size detected for " + str(f_prefix) +
+                      ", falling back to 1280x720." +
+                      "Plese define at least width or height in 'configs/image-resize.ini'!")
+                else:
+                    _, width = compute_dimensions(height, None, _height, _width)
+            if height < 1:
+                _, height = compute_dimensions(width, None, _width, _height)
 
-            def closure(dst_jpegname, source_img, width, height, resize_image=True, ):
+            for f_suffix in f_suffixes:
+                """
+                    run loop for each file we want to export
+                """
+                whqffdict = {
+                    'width': str(width),
+                    'height': str(height),
+                    'quality': str(89),
+                    'file_format': str(f_prefix),
+                }
+                def closure(f_prefix, f_suffix, source_img, whqffdict, resize_image=True,):
                 # We need this closure, otherwise variables get updated and this
                 # doesn't work at all.
-                @ctx.sub_artifact(artifact_name=dst_jpegname, sources=[source_img])
-                def build_thumbnail_artifact(artifact):
-                    artifact.ensure_dir()
-                    if not resize_image:
-                        shutil.copy2(source_img, artifact.dst_jpegname)
-                    else:
-                        process_image(
-                            ctx,
-                            source_img,
-                            artifact.dst_filename,
-                            width,
-                            height,
-                            quality=89,
-                            extra_params=['-strip', '-interlace', 'Plane',],
-                        )
-
-            def webclosure(dst_webpname, source_img, width, height, resize_image=True, ):
-                @ctx.sub_artifact(artifact_name=dst_webpname, sources=[source_img])
-                def build_thumbnail_artifact(artifact):
-                    artifact.ensure_dir()
-                    process_image_webp(
-                        ctx,
-                        source_img,
-                        artifact.dst_filename,
-                        width,
-                        height,
-                        quality=89,
-                        extra_params=['-strip', '-interlace', 'Plane',],
-                        resize_image = resize_image,
-                    )
-
-            # If the image is larger than the max_width, resize it, otherwise
-            # just copy it.
-            resize_image = _width > width or _height > height
-            closure(dst_jpegname, source_img, width, height, resize_image)
-            webclosure(dst_webpname, source_img, width, height, resize_image)
+                    dst_filename = f"{f_prefix}.{f_suffix}"
+                    @ctx.sub_artifact(artifact_name=dst_filename, sources=[source_img])
+                    def build_thumbnail_artifact(artifact):
+                        artifact.ensure_dir()
+                        if not resize_image and f_suffix != 'webp':
+                            shutil.copy2(source_img, artifact.dst_filename)
+                        else:
+                            process_image(
+                                ctx,
+                                source_img,
+                                artifact.dst_filename,
+                                whqffdict,
+                                extra_params= ['-strip', '-interlace', 'Plane',],
+                                resize_image=resize_image,
+                            )
+                resize_image = _width > width or _height > height
+                closure(f_prefix, f_suffix, source_img, whqffdict, bool(resize_image))
 
 
 class ImageResizePlugin(Plugin):

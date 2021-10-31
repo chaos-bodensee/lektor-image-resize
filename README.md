@@ -28,11 +28,11 @@ You can use the images like that:
 <a href="waffle.jpg"><img src="waffle-small.jpg" /></a>
 
 <!-- example with srcset -->
-<a href="waffle-woowee.webp">
+<a href="waffle-small.webp">
   <img src="waffle-small.webp"
-    srcset="waffle-small.webp  512w,   // Viewport bis zu 512
-            waffle-medium.webp 900w,   // Viewport größer als 512
-            waffle-woowee.webp 1440w"  // Viewport größer als 900
+    srcset="waffle-small.webp  640w,   // Viewport bis zu 640
+            waffle-medium.webp 1280w,  // Viewport größer als 1280
+            waffle-woowee.webp 1920w"  // Viewport größer als 1920
   />
 </a>
 ```
@@ -57,14 +57,14 @@ Here is a example config file:
 
 ```ini
 [small]
-max_width = 512
+width = 640
+height = 360
 
 [medium]
-max_width = 900
-max_height = 900
+height = 720
 
 [woowee]
-max_width = 1440
+width = 1920
 ```
 
 Will take a file called `waffle.jpg` and create the files `waffle-small.jpg`,
