@@ -22,18 +22,21 @@ def process_image(
     ctx,
     source_image,
     dst_imagename,
-    width=None,
-    height=None,
-    quality=None,
+    whqffdict=None,
     extra_params=None,
     resize_image=True,
-    file_format=None,
 ):
     """Build image from source image, optionally compressing and resizing.
     "source_image" is the absolute path of the source in the content directory,
     "dst_imagename" is the absolute path of the target in the output directory.
     """
     reporter.report_debug_info("processing image:", dst_imagename)
+    if whqffdict is not None:
+        width=int(whqffdict['width'])
+        height=int(whqffdict['height'])
+        quality=int(whqffdict['quality'])
+        file_format=str(whqffdict['file_format'])
+
     if width is None and height is None:
         raise ValueError("Must specify at least one of width or height.")
 
@@ -91,8 +94,8 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
             height = int(conf.get("height", "0"))
             filename = artifact.source_obj.url_path
             ext_pos = filename.rfind(".")
-            filename_prefix = "%s-%s" % (filename[:ext_pos], item)
-            filename_suffixes = ['jpg', 'webp']
+            f_prefix = f"{filename[:ext_pos]}-{item}"
+            f_suffixes = ['jpg', 'webp']
             """
               makeing sure width and height are defined
             """
@@ -100,39 +103,44 @@ class ResizedImageBuildProgram(AttachmentBuildProgram):
                 if height < 1:
                     width = int(1280)
                     height = int(720)
-                    print(f"WARNING: No size detected for {filename_prefix}, falling back to 1280x720. Plese define at least width or height in 'configs/image-resize.ini'!")
+                    print("WARNING: No size detected for " + str(f_prefix) +
+                      ", falling back to 1280x720." +
+                      "Plese define at least width or height in 'configs/image-resize.ini'!")
                 else:
                     _, width = compute_dimensions(height, None, _height, _width)
             if height < 1:
                 _, height = compute_dimensions(width, None, _width, _height)
 
-            for filename_suffix in filename_suffixes:
+            for f_suffix in f_suffixes:
                 """
                     run loop for each file we want to export
                 """
-                def closure(filename_prefix, filename_suffix, source_img, width, height, resize_image=True, ):
+                whqffdict = {
+                    'width': str(width),
+                    'height': str(height),
+                    'quality': str(89),
+                    'file_format': str(f_prefix),
+                }
+                def closure(f_prefix, f_suffix, source_img, whqffdict, resize_image=True,):
                 # We need this closure, otherwise variables get updated and this
                 # doesn't work at all.
-                    dst_filename = f"{filename_prefix}.{filename_suffix}"
+                    dst_filename = f"{f_prefix}.{f_suffix}"
                     @ctx.sub_artifact(artifact_name=dst_filename, sources=[source_img])
                     def build_thumbnail_artifact(artifact):
                         artifact.ensure_dir()
-                        if not resize_image and filename_suffix != 'webp':
+                        if not resize_image and f_suffix != 'webp':
                             shutil.copy2(source_img, artifact.dst_filename)
                         else:
                             process_image(
                                 ctx,
                                 source_img,
                                 artifact.dst_filename,
-                                width,
-                                height,
-                                quality=89,
-                                extra_params=['-strip', '-interlace', 'Plane',],
+                                whqffdict,
+                                extra_params= ['-strip', '-interlace', 'Plane',],
                                 resize_image=resize_image,
-                                file_format=filename_prefix,
                             )
                 resize_image = _width > width or _height > height
-                closure(filename_prefix, filename_suffix, source_img, width, height, bool(resize_image))
+                closure(f_prefix, f_suffix, source_img, whqffdict, bool(resize_image))
 
 
 class ImageResizePlugin(Plugin):
